@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 
+# written by:
+# Alex Leake https://github.com/alexleake
+
 import rados
 import json
 
