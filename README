@@ -1,0 +1,6 @@
+some simple check_mk scripts, most print perf data so you'll need
+pnp4nagios or similar to graph.
+
+check_mk info:
+
+https://mathias-kettner.de/checkmk_localchecks.html
