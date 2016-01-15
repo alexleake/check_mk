@@ -1,0 +1,6 @@
+these scripts need api access, in the past i've run them on
+the monitor servers themselves - although a key with less 
+privilage would be more secure.
+
+the osd latency script is quite onerous on your nagios
+instance! especially when you have 100+ OSDs.
