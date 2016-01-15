@@ -1,0 +1,31 @@
+#!/usr/bin/env python
+
+import rados
+import json
+import sys
+
+cluster = rados.Rados(conffile='/etc/ceph/ceph.conf')
+
+cluster.connect()
+
+cluster_osd_perf = json.loads(cluster.mon_command(json.dumps({"prefix": "osd perf", "format": "json-pretty"}), "")[1])
+
+osd_warn_ms = 150
+osd_crit_ms = 500
+sum_osds = 0
+sum_ms = 0
+
+sys.stdout.write("0 ceph_osd_apply_latency ")
+
+for pair in cluster_osd_perf['osd_perf_infos']:
+    osd_id = pair['id'] 
+    osd_ms = pair['perf_stats']['apply_latency_ms']
+    sum_ms += osd_ms
+    sum_osds += 1
+    sys.stdout.write(("osd{osd_id}={osd_ms};{osd_warn_ms};{osd_crit_ms}|").format(**vars()))
+
+osd_ms_average = sum_ms / sum_osds
+
+sys.stdout.write("osd_average={osd_ms_average} ".format(**vars()))
+sys.stdout.write("Average apply latency is {osd_ms_average}ms.".format(**vars()))
+sys.stdout.write("\n")

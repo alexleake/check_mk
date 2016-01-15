@@ -1,0 +1,42 @@
+#!/usr/bin/env python
+
+import rados
+import json
+
+cluster = rados.Rados(conffile='/etc/ceph/ceph.conf')
+
+cluster.connect()
+
+cluster_pg_info = json.loads(cluster.mon_command(json.dumps({"prefix": "pg stat", "format": "json-pretty"}), "")[1])
+
+total_pgs = cluster_pg_info['num_pgs']
+pg_by_state = cluster_pg_info['num_pg_by_state']
+
+for pair in pg_by_state:
+    if pair['name'] == 'active+clean':
+        clean_pgs = pair['num']
+
+not_clean=(total_pgs - clean_pgs)
+
+if not_clean < 20:
+    status = 0
+    status_text = "OK"
+elif not_clean <= 50:
+    status = 1
+    status_text = "WARNING"
+elif not_clean > 50:
+    status = 1
+    status_text = "CRITICAL"
+else:
+    status = 3
+    status_text = "UNKNOWN"
+
+check_title = "ceph_pg_status"
+value = not_clean
+warn = 20
+crit = 50
+minm = 0
+maxm = 100
+status_body = "There are {total_pgs} pgs of which {not_clean} are not active+clean.".format(total_pgs=total_pgs,not_clean=not_clean)
+
+print "{status} {check_title} count={value};{warn};{crit};{minm};{maxm}; {status_text} - {status_body}".format(**vars())
