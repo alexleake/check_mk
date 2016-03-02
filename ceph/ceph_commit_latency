@@ -1,0 +1,54 @@
+#!/usr/bin/env python
+
+import rados
+import json
+import sys
+
+cluster = rados.Rados(conffile='/etc/ceph/ceph.conf')
+
+cluster.connect()
+
+cluster_osd_perf = json.loads(cluster.mon_command(json.dumps({"prefix": "osd perf", "format": "json-pretty"}), "")[1])
+
+# check variables
+
+check_title = "ceph_commit_latency"
+
+warn_value = 100
+crit_value = 250
+
+maxm_value = 9000
+minm_value = 0
+
+# end of variables
+
+commit_total = 0
+osd_total = 0
+
+for pair in cluster_osd_perf['osd_perf_infos']:
+    commit_latency = pair['perf_stats']['commit_latency_ms']
+    commit_total += commit_latency
+    osd_total += 1
+
+commit_average = commit_total / osd_total
+
+if commit_average < warn_value:
+    status_message = "OK"
+    status_extended = "Commit latency is within normal limits."
+    status_code = 0
+elif commit_average < crit_value:
+    status_message = "WARNING"
+    status_extended = "Commit latency is above normal levels."
+    status_code = 1
+elif commit_average >= crit_value:
+    status_message = "CRITICAL"
+    status_extended = "Commit latency is beyond acceptable limits."
+    status_code = 2
+else:
+    status_message = "UNKNOWN"
+    status_extended = "Unable to understand check output. Please see Alex."
+    status_code = 3
+
+perf_data = "count={commit_average};{warn_value};{crit_value};{minm_value};{maxm_value};".format(**vars())
+
+print "{status_code} {check_title} {perf_data} {status_message} - {status_extended} Current average is: {commit_average}ms.".format(**vars())

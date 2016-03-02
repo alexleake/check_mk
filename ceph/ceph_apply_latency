@@ -1,0 +1,54 @@
+#!/usr/bin/env python
+
+import rados
+import json
+import sys
+
+cluster = rados.Rados(conffile='/etc/ceph/ceph.conf')
+
+cluster.connect()
+
+cluster_osd_perf = json.loads(cluster.mon_command(json.dumps({"prefix": "osd perf", "format": "json-pretty"}), "")[1])
+
+# check variables
+
+check_title = "ceph_apply_latency"
+
+warn_value = 100
+crit_value = 250
+
+maxm_value = 9000
+minm_value = 0
+
+# end of variables
+
+apply_total = 0
+osd_total = 0
+
+for pair in cluster_osd_perf['osd_perf_infos']:
+    apply_latency = pair['perf_stats']['apply_latency_ms']
+    apply_total += apply_latency
+    osd_total += 1
+
+apply_average = apply_total / osd_total
+
+if apply_average < warn_value:
+    status_message = "OK"
+    status_extended = "Apply latency is within normal limits."
+    status_code = 0
+elif apply_average < crit_value:
+    status_message = "WARNING"
+    status_extended = "Apply latency is above normal levels."
+    status_code = 1
+elif apply_average >= crit_value:
+    status_message = "CRITICAL"
+    status_extended = "Apply latency is beyond acceptable limits."
+    status_code = 2
+else:
+    status_message = "UNKNOWN"
+    status_extended = "Unable to understand check output. Please see Alex."
+    status_code = 3
+
+perf_data = "count={apply_average};{warn_value};{crit_value};{minm_value};{maxm_value};".format(**vars())
+
+print "{status_code} {check_title} {perf_data} {status_message} - {status_extended} Current average is: {apply_average}ms.".format(**vars())
